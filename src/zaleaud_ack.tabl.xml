@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_TABL" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <DD02V>
+    <TABNAME>ZALEAUD_ACK</TABNAME>
+    <DDLANGUAGE>E</DDLANGUAGE>
+    <TABCLASS>INTTAB</TABCLASS>
+    <DDTEXT>ALEAUD ack segment for ASRS ACK#</DDTEXT>
+    <MASTERLANG>E</MASTERLANG>
+    <EXCLASS>1</EXCLASS>
+   </DD02V>
+   <DD03P_TABLE>
+    <DD03P>
+     <FIELDNAME>ZACKNO</FIELDNAME>
+     <ADMINFIELD>0</ADMINFIELD>
+     <INTTYPE>C</INTTYPE>
+     <INTLEN>000040</INTLEN>
+     <DATATYPE>CHAR</DATATYPE>
+     <LENG>000020</LENG>
+     <MASK>  CHAR</MASK>
+    </DD03P>
+   </DD03P_TABLE>
+   <SEGMENT_DEFINITION>
+    <item>
+     <SEGMENTHEADER>
+      <SEGTYP>ZALEAUD_ACK</SEGTYP>
+      <DESCRP>ALEAUD ack segment for ASRS ACK#</DESCRP>
+     </SEGMENTHEADER>
+     <SEGMENTDEFINITION>
+      <SEGTYP>ZALEAUD_ACK</SEGTYP>
+      <SEGDEF>ZALEAUD_ACK000</SEGDEF>
+      <RELEASED>758</RELEASED>
+      <CLOSED>X</CLOSED>
+      <FIELDNUM>0001</FIELDNUM>
+      <EXPLENG>0020</EXPLENG>
+      <APPLREL>DEV</APPLREL>
+     </SEGMENTDEFINITION>
+     <SEGMENTSTRUCTURES>
+      <EDISEGSTRU>
+       <SEGTYP>ZALEAUD_ACK</SEGTYP>
+       <POS>0001</POS>
+       <FIELDNAME>ZACKNO</FIELDNAME>
+       <ROLLNAME>CHAR20</ROLLNAME>
+       <EXPLENG>0020</EXPLENG>
+      </EDISEGSTRU>
+     </SEGMENTSTRUCTURES>
+    </item>
+   </SEGMENT_DEFINITION>
+  </asx:values>
+ </asx:abap>
+</abapGit>
