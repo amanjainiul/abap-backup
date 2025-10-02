@@ -130,7 +130,7 @@ METHOD if_ex_exec_methodcall_ppf~execute.
   "---------------------------------------------------------
   " Build OData URI (case sensitive!)
   "---------------------------------------------------------
-  lv_uri = |Z_EWM_WHO_PROCESS_SRV/WarehouseOrderSet(Lgnum='{ lv_lgnum }',Who='{ lv_who }')|.
+  lv_uri = |Z_EWM_WHO_PROCESS1_SRV_01/WarehouseOrderSet(Lgnum='{ lv_lgnum }',Who='{ lv_who }')|.
 
   "---------------------------------------------------------
   " HTTP Call via SM59 (ZGW_LOOPBACK)
