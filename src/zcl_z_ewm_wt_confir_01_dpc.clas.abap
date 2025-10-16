@@ -714,57 +714,74 @@ METHOD whoconfirmheader_create_entity.
   DATA: ls_hdr TYPE zcl_z_ewm_wt_confir_01_mpc=>ts_whoconfirmheader1.
 
   "=== FM tables (match /SCWM/TO_CONFIRM signature) ===
-  DATA: lt_conf        TYPE /scwm/to_conf_tt,
-        lt_conf_exc    TYPE /scwm/tt_conf_exc,
-        lt_conf_serid  TYPE /scwm/tt_conf_serid,
-        lt_bapiret     TYPE bapirettab,
-        lt_ltap_vb     TYPE /scwm/tt_ltap_vb.
+  DATA: lt_conf       TYPE /scwm/to_conf_tt,
+        lt_conf_exc   TYPE /scwm/tt_conf_exc,
+        lt_conf_serid TYPE /scwm/tt_conf_serid,
+        lt_bapiret    TYPE bapirettab,
+        lt_ltap_vb    TYPE /scwm/tt_ltap_vb.
 
-  " Derive line type from table type (release-robust)
   TYPES: ty_conf_line TYPE LINE OF /scwm/to_conf_tt.
   DATA:  ls_conf      TYPE ty_conf_line.
 
-  "=== Locals ===
-  DATA: lv_subst         TYPE xfeld,
-        lv_update_task   TYPE xfeld,
-        lv_commit_work   TYPE xfeld,
-        lv_qname         TYPE uname,
-        lv_text          TYPE string.
+  DATA: lv_subst       TYPE xfeld,
+        lv_update_task TYPE xfeld,
+        lv_commit_work TYPE xfeld,
+        lv_qname       TYPE uname,
+        lv_text        TYPE string.
 
-  " Unicode-safe WHO handling:
-  "   - use the DB field type itself to avoid STRING<->CHAR issues
-  "   - run ALPHA on a CHAR-like var only
-  DATA: lv_who_db        TYPE /scwm/ordim_o-who,  " <-- exact DB type
-        lv_who_c         TYPE /scwm/ordim_o-who.  " working char var for ALPHA
+  DATA: lv_who_db TYPE /scwm/ordim_o-who,
+        lv_who_c  TYPE /scwm/ordim_o-who.
 
-  " TANUM list for the WHO
   TYPES: BEGIN OF ty_tanum,
            tanum TYPE /scwm/tanum,
          END OF ty_tanum.
-  DATA: lt_tanum TYPE STANDARD TABLE OF ty_tanum WITH DEFAULT KEY,
+  DATA: lt_tanum TYPE STANDARD TABLE OF ty_tanum,
         ls_tanum TYPE ty_tanum.
 
-  " 1) Read payload
+  " --- NEW for payload logging ---
+  DATA: lv_hdr_id  TYPE numc10,
+        ls_hdr_rec TYPE zodata_hdr,
+        ls_kv      TYPE zodata_kv,
+        lv_seqno   TYPE numc7,
+        lt_cfg     TYPE TABLE OF zodata_keys_cf1,
+        ls_cfg     TYPE zodata_keys_cf1,
+        lt_props   TYPE string_table,   " provided property names
+        lv_prop    TYPE string.
+
+  "---------------------------------------------------------
+  " 1) Read payload into entity structure
+  "---------------------------------------------------------
   io_data_provider->read_entry_data( IMPORTING es_data = ls_hdr ).
 
+  " Provided properties (what actually came in the request)
+  CALL METHOD io_tech_request_context->get_provided_properties
+    IMPORTING
+      et_provided_property = lt_props.
+
+  "---------------------------------------------------------
   " 2) Basic validation
+  "---------------------------------------------------------
   IF ls_hdr-lgnum IS INITIAL OR ls_hdr-who IS INITIAL.
     ls_hdr-message = 'LGNUM and WHO are required.'.
     er_entity      = ls_hdr.
     RETURN.
   ENDIF.
 
-  " 3) WHO ALPHA IN (Unicode-safe: STRING -> CHAR (DB type) -> ALPHA)
+  "---------------------------------------------------------
+  " 3) WHO ALPHA IN
+  "---------------------------------------------------------
   CLEAR lv_who_c.
-  lv_who_c = ls_hdr-who.   " STRING to CHAR is ok because lv_who_c is CHAR-like
+  lv_who_c = ls_hdr-who.
   CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
     EXPORTING
       input  = lv_who_c
     IMPORTING
       output = lv_who_c.
-  lv_who_db = lv_who_c.    " move to final var with EXACT DB type
+  lv_who_db = lv_who_c.
 
-  " 4) Header booleans -> XFELD
+  "---------------------------------------------------------
+  " 4) Header booleans
+  "---------------------------------------------------------
   IF ls_hdr-subst = abap_true OR ls_hdr-subst = 'X'.
     lv_subst = 'X'.
   ELSE.
@@ -785,7 +802,9 @@ METHOD whoconfirmheader_create_entity.
 
   lv_qname = sy-uname.
 
-  " 5) Collect all WTs for this WHO (adjust status filter if needed)
+  "---------------------------------------------------------
+  " 5) Collect all WTs for this WHO
+  "---------------------------------------------------------
   CLEAR lt_tanum.
   SELECT tanum
     FROM /scwm/ordim_o
@@ -801,17 +820,20 @@ METHOD whoconfirmheader_create_entity.
   SORT lt_tanum BY tanum.
   DELETE ADJACENT DUPLICATES FROM lt_tanum COMPARING tanum.
 
-  " 6) Build IT_CONF with VQUIT='X' (confirm target = actual) per WT
+  "---------------------------------------------------------
+  " 6) Build IT_CONF
+  "---------------------------------------------------------
   CLEAR lt_conf.
   LOOP AT lt_tanum INTO ls_tanum.
     CLEAR ls_conf.
     ls_conf-tanum = ls_tanum-tanum.
-    " PAPOS initial -> original item
     ls_conf-squit = 'X'.
     APPEND ls_conf TO lt_conf.
   ENDLOOP.
 
-  " 7) Call /SCWM/TO_CONFIRM (EXPORTING/IMPORTING; no TABLES!)
+  "---------------------------------------------------------
+  " 7) Call /SCWM/TO_CONFIRM
+  "---------------------------------------------------------
   CALL FUNCTION '/SCWM/TO_CONFIRM'
     EXPORTING
       iv_lgnum         = ls_hdr-lgnum
@@ -837,19 +859,81 @@ METHOD whoconfirmheader_create_entity.
             WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4
             INTO lv_text.
     IF lv_text IS INITIAL.
-      lv_text = 'TO_CONFIRM failed (parameter mismatch or runtime error).'.
+      lv_text = 'TO_CONFIRM failed (parameter mismatch or runtime error).' .
     ENDIF.
     ls_hdr-message = lv_text.
     er_entity      = ls_hdr.
     RETURN.
   ENDIF.
 
+  "---------------------------------------------------------
   " 8) Return first BAPIRET message (if any)
+  "---------------------------------------------------------
   DATA ls_ret TYPE bapiret2.
   READ TABLE lt_bapiret INTO ls_ret INDEX 1.
   IF sy-subrc = 0.
     ls_hdr-message = ls_ret-message.
   ENDIF.
+
+  "---------------------------------------------------------
+  " 9) Persist header record
+  "---------------------------------------------------------
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZODATAHDR'
+    IMPORTING
+      number      = lv_hdr_id
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  CLEAR ls_hdr_rec.
+  ls_hdr_rec-mandt     = sy-mandt.
+  ls_hdr_rec-hdr_id    = lv_hdr_id.
+  ls_hdr_rec-timestamp = sy-datum * 1000000 + sy-uzeit.
+  ls_hdr_rec-lgnum     = ls_hdr-lgnum.
+  ls_hdr_rec-who       = ls_hdr-who.
+  ls_hdr_rec-userid    = sy-uname.
+  ls_hdr_rec-odata_srv = 'Z_EWM_WT_CONFIRMATION1_SRV'.
+  INSERT zodata_hdr FROM ls_hdr_rec.
+
+  "---------------------------------------------------------
+  " 10) Persist key/value pairs dynamically
+  "---------------------------------------------------------
+  lv_seqno = 0.
+  DEFINE add_kv_local.
+    ADD 1 TO lv_seqno.
+    CLEAR ls_kv.
+    ls_kv-mandt     = sy-mandt.
+    ls_kv-hdr_id    = lv_hdr_id.
+    ls_kv-seqno     = lv_seqno.
+    ls_kv-key_name  = &1.
+    ls_kv-key_value = &2.
+    INSERT zodata_kv FROM ls_kv.
+  END-OF-DEFINITION.
+
+  " Load config of active keys
+  SELECT *
+    FROM zodata_keys_cf1
+    INTO TABLE lt_cfg
+    WHERE odata_srv = 'Z_EWM_WT_CONFIRMATION1_SRV'
+      AND active    = 'X'.
+
+  SORT lt_cfg BY log_key.
+
+  LOOP AT lt_cfg INTO ls_cfg.
+    " Check if property was provided in payload
+    READ TABLE lt_props INTO lv_prop WITH KEY table_line = ls_cfg-log_key.
+    IF sy-subrc = 0.
+      " Get value dynamically from ls_hdr
+      ASSIGN COMPONENT ls_cfg-log_key OF STRUCTURE ls_hdr TO FIELD-SYMBOL(<lv_val>).
+      IF sy-subrc = 0 AND <lv_val> IS ASSIGNED AND <lv_val> IS NOT INITIAL.
+        add_kv_local ls_cfg-log_key <lv_val>.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+  CALL FUNCTION 'DB_COMMIT'.
 
   er_entity = ls_hdr.
 
@@ -913,8 +997,24 @@ METHOD wtconfirmheader1_create_entity.
         lv_qname       TYPE uname,
         lv_text        TYPE string.
 
+  " --- KEY/VALUE LOGGING variables (added) ---
+  DATA: lv_hdr_id  TYPE numc10,
+        ls_hdr_rec TYPE zodata_hdr,
+        ls_kv      TYPE zodata_kv,
+        lv_seqno   TYPE numc7,
+        lt_cfg     TYPE TABLE OF zodata_keys_cf1,
+        ls_cfg     TYPE zodata_keys_cf1,
+        lt_props   TYPE string_table,   " provided property names
+        lv_prop    TYPE string.
+  FIELD-SYMBOLS: <lv_val> TYPE any.
+
   " 1) Read header
   io_data_provider->read_entry_data( IMPORTING es_data = ls_hdr ).
+
+  " Provided properties (names actually in request) - added
+  CALL METHOD io_tech_request_context->get_provided_properties
+    IMPORTING
+      et_provided_property = lt_props.
 
   " 2) Convert booleans to XFELD
   IF ls_hdr-subst = abap_true OR ls_hdr-subst = 'X'.
@@ -1162,7 +1262,7 @@ METHOD wtconfirmheader1_create_entity.
             WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4
             INTO lv_text.
     IF lv_text IS INITIAL.
-      lv_text = 'TO_CONFIRM failed (parameter mismatch or runtime error).'.
+      lv_text = 'TO_CONFIRM failed (parameter mismatch or runtime error).' .
     ENDIF.
     ls_hdr-itemsxml = lv_text.
     er_entity = ls_hdr.
@@ -1173,6 +1273,66 @@ METHOD wtconfirmheader1_create_entity.
   IF sy-subrc = 0.
     ls_hdr-itemsxml = ls_ret-message.
   ENDIF.
+
+  " ------------------ ADD KEY-VALUE PERSISTENCE BLOCK BELOW (minimal insertion) ------------------
+
+  " 7) Persist header record for key/value logging
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZODATAHDR'
+    IMPORTING
+      number      = lv_hdr_id
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  CLEAR ls_hdr_rec.
+  ls_hdr_rec-mandt     = sy-mandt.
+  ls_hdr_rec-hdr_id    = lv_hdr_id.
+  ls_hdr_rec-timestamp = sy-datum * 1000000 + sy-uzeit.
+  ls_hdr_rec-lgnum     = ls_hdr-lgnum.
+  ls_hdr_rec-who       = ls_hdr-who.
+  ls_hdr_rec-userid    = sy-uname.
+  ls_hdr_rec-odata_srv = 'Z_EWM_WT_CONFIRMATION1_SRV'.
+  INSERT zodata_hdr FROM ls_hdr_rec.
+
+  " helper macro to insert KV rows
+  lv_seqno = 0.
+  DEFINE add_kv_local.
+    ADD 1 TO lv_seqno.
+    CLEAR ls_kv.
+    ls_kv-mandt     = sy-mandt.
+    ls_kv-hdr_id    = lv_hdr_id.
+    ls_kv-seqno     = lv_seqno.
+    ls_kv-key_name  = &1.
+    ls_kv-key_value = &2.
+    INSERT zodata_kv FROM ls_kv.
+  END-OF-DEFINITION.
+
+  " Load config of active keys
+  SELECT *
+    FROM zodata_keys_cf1
+    INTO TABLE lt_cfg
+    WHERE odata_srv = 'Z_EWM_WT_CONFIRMATION1_SRV'
+      AND active    = 'X'.
+
+  SORT lt_cfg BY log_key.
+
+  LOOP AT lt_cfg INTO ls_cfg.
+    " Check if property was provided in payload
+    READ TABLE lt_props INTO lv_prop WITH KEY table_line = ls_cfg-log_key.
+    IF sy-subrc = 0.
+      " Get value dynamically from ls_hdr
+      ASSIGN COMPONENT ls_cfg-log_key OF STRUCTURE ls_hdr TO <lv_val>.
+      IF sy-subrc = 0 AND <lv_val> IS ASSIGNED AND <lv_val> IS NOT INITIAL.
+        add_kv_local ls_cfg-log_key <lv_val>.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+  CALL FUNCTION 'DB_COMMIT'.
+
+  " -----------------------------------------------------------------------------------------------
 
   er_entity = ls_hdr.
 
