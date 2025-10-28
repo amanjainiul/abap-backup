@@ -1,0 +1,65 @@
+class ZCL_IM_QM_INSPECTIONLOT_UP definition
+  public
+  final
+  create public .
+
+public section.
+
+  interfaces IF_EX_INSPECTIONLOT_UPDATE .
+protected section.
+private section.
+ENDCLASS.
+
+
+
+CLASS ZCL_IM_QM_INSPECTIONLOT_UP IMPLEMENTATION.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~CHANGE_AT_SAVE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~CHANGE_BEFORE_UPDATE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~CHANGE_IN_UPDATE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~CHANGE_UD_AT_SAVE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~CHANGE_UD_BEFORE_UPDATE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~CHANGE_UD_IN_UPDATE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~CREATE_AT_SAVE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~CREATE_BEFORE_UPDATE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~CREATE_IN_UPDATE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~SET_UD_AT_SAVE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~SET_UD_BEFORE_UPDATE.
+  endmethod.
+
+
+  method IF_EX_INSPECTIONLOT_UPDATE~SET_UD_IN_UPDATE.
+    BREAK-POINT.
+  endmethod.
+ENDCLASS.

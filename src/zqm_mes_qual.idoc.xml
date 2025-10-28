@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_IDOC" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <IDOC>
+    <ATTRIBUTES>
+     <DESCRP>QM integration with MES</DESCRP>
+     <FIRSTTYP>ZQM_MES_QUAL</FIRSTTYP>
+     <LASTTYP>ZQM_MES_QUAL</LASTTYP>
+    </ATTRIBUTES>
+    <T_SYNTAX>
+     <EDI_IAPI02>
+      <NR>0001</NR>
+      <SEGTYP>ZE1QM_HDR</SEGTYP>
+      <PARFLG>X</PARFLG>
+      <OCCMIN>0000000001</OCCMIN>
+      <OCCMAX>0000009999</OCCMAX>
+      <HLEVEL>02</HLEVEL>
+     </EDI_IAPI02>
+     <EDI_IAPI02>
+      <NR>0002</NR>
+      <SEGTYP>ZE1QM_UD</SEGTYP>
+      <PARSEG>ZE1QM_HDR</PARSEG>
+      <PARPNO>0001</PARPNO>
+      <OCCMIN>0000000001</OCCMIN>
+      <OCCMAX>0000009999</OCCMAX>
+      <HLEVEL>03</HLEVEL>
+     </EDI_IAPI02>
+     <EDI_IAPI02>
+      <NR>0003</NR>
+      <SEGTYP>ZE1QM_RESULT</SEGTYP>
+      <PARSEG>ZE1QM_HDR</PARSEG>
+      <PARPNO>0001</PARPNO>
+      <OCCMIN>0000000001</OCCMIN>
+      <OCCMAX>0000009999</OCCMAX>
+      <HLEVEL>03</HLEVEL>
+     </EDI_IAPI02>
+    </T_SYNTAX>
+   </IDOC>
+  </asx:values>
+ </asx:abap>
+</abapGit>
